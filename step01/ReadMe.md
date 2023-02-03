@@ -42,5 +42,46 @@ $ mkdir -p ~/.local/bin
 $ install h8write ~/.local/bin/.
 ```
 
+USB シリアルケーブルを利用しているので、
+書き込み対象デバイスは `/dev/ttyUSB0` などのように見えている。
+これに書き込むために毎回スーパユーザになるのは面倒なので
+dialout グループに入れてもらおう。
+権限が効力を発揮するのは次回のログイン以降である。
+
+```console
+$ sudo usermod -aG dialout mkn	# mkn はユーザ名
+```
+
+## コードの読み替えとか
+
+Makefile の一部を修正する必要がある。
+
+- `PREFIX` の値を `/usr` に
+- `ARCH` の値を `h8300-hms` に
+- \*.elf な拡張子を \*.coff に
+- (h8write のインストール場所に合わせて) パスを変更
+
+## ビルドと書き込み
+
+`make` して `make write` すれば書き込まれる。
+その際、DIP スイッチの状態を ON/ON/OFF/ON にしておく。
+
+## 実行
+
+実行するために `screen` をインストールする。
+
+```console
+$ sudo apt update && sudo apt upgrade -y
+$ sudo apt install screen
+```
+
+screen を起動してシリアルデバイスを監視しておき、マイコンボードの電源を入れる。
+その際、DIP スイッチの状態を ON/OFF/ON/OFF にしておく。
+screen を終了するには [Ctrl]+[A] を押下し、[K] を押下し、[Y] を押下する。
+
+```console
+$ screen /dev/ttyUSB0 9600
+```
+
 [objchg]:  https://kozos.jp/books/makeos/objchg.html
 [h8write]: https://mes.osdn.jp/h8/writer-j.html

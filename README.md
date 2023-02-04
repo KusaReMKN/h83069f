@@ -40,7 +40,17 @@ H8/3069F の代わりに H8/3068F が載っているボードも拾ったけれ�
 - [H8/3069F ネット対応マイコン LAN ボード (ボードキット)][K-00209]
 - [AKI-H8/3068F フラッシュマイコン LAN ボード][K-11207]
 
+## objchg について
+
+マイコン付属の CD-ROM や apt 経由でインストールできるコンパイラは COFF を吐く。
+これを ELF に変換するために [objchg][objchg] が配布されている。
+しかし、これを x86\_64 などの
+long が 32bit ではない環境でビルドすると正常に動作しない。
+とりあえず long を uint32\_t に、short を uint16\_t に置換すれば動くようなので
+[patch](./objchg.64.diff) を置いてお茶を濁しておく。
+
 [makeos]:  https://kozos.jp/books/makeos/
 [K-01271]: https://akizukidenshi.com/catalog/g/gK-01271/
 [K-00209]: https://akizukidenshi.com/catalog/g/gK-00209/
 [K-11207]: https://akizukidenshi.com/catalog/g/gK-11207/
+[objchg]:  https://kozos.jp/books/makeos/objchg.html

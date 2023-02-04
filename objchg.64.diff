@@ -1,0 +1,808 @@
+diff -Naurp objchg.org/block.c objchg/block.c
+--- objchg.org/block.c	2010-12-29 19:23:03.000000000 +0900
++++ objchg/block.c	2023-02-04 22:21:32.981571658 +0900
+@@ -12,9 +12,9 @@ struct _block_list {
+ struct _block {
+   struct _block *next;
+   char *name;
+-  long size;
+-  long offset;
+-  long datasize;
++  uint32_t size;
++  uint32_t offset;
++  uint32_t datasize;
+   char *data;
+ };
+ 
+@@ -116,10 +116,10 @@ int block_list_count_position(block_list
+   return -1;
+ }
+ 
+-long block_list_count_offset(block_list blklist, block blk)
++uint32_t block_list_count_offset(block_list blklist, block blk)
+ {
+   block blk2;
+-  long offset = 0;
++  uint32_t offset = 0;
+   for (blk2 = blklist->head; blk2; blk2 = blk2->next) {
+     if (blk2 == blk)
+       return offset;
+@@ -137,10 +137,10 @@ int block_list_align(block_list blklist,
+   return 0;
+ }
+ 
+-long block_list_out(block_list blklist, FILE *out)
++uint32_t block_list_out(block_list blklist, FILE *out)
+ {
+   block blk;
+-  long size = 0;
++  uint32_t size = 0;
+ 
+   for (blk = blklist->head; blk; blk = blk->next) {
+     size += block_out(blk, out);
+@@ -186,7 +186,7 @@ block block_destroy(block blk)
+   return NULL;
+ }
+ 
+-static long block_extend(block blk, long size)
++static uint32_t block_extend(block blk, long size)
+ {
+   char *newbuf;
+   if (size > blk->datasize) {
+@@ -202,14 +202,14 @@ static long block_extend(block blk, long
+   return size;
+ }
+ 
+-long block_seek(block blk, long offset)
++uint32_t block_seek(block blk, long offset)
+ {
+   block_extend(blk, offset);
+   blk->offset = offset;
+   return offset;
+ }
+ 
+-long block_read(block blk, long size, char *data)
++uint32_t block_read(block blk, long size, char *data)
+ {
+   if (blk->offset > blk->size)
+     return 0;
+@@ -220,7 +220,7 @@ long block_read(block blk, long size, ch
+   return size;
+ }
+ 
+-long block_write(block blk, long size, char *data)
++uint32_t block_write(block blk, long size, char *data)
+ {
+   block_extend(blk, blk->offset + size);
+   if (data)
+@@ -251,7 +251,7 @@ char *block_get_name(block blk)
+   return blk->name;
+ }
+ 
+-long block_get_size(block blk)
++uint32_t block_get_size(block blk)
+ {
+   return blk->size;
+ }
+diff -Naurp objchg.org/block.h objchg/block.h
+--- objchg.org/block.h	2010-12-29 19:23:03.000000000 +0900
++++ objchg/block.h	2023-02-04 22:23:15.707914282 +0900
+@@ -1,6 +1,7 @@
+ #ifndef _BLOCK_H_INCLUDED_
+ #define _BLOCK_H_INCLUDED_
+ 
++#include <stdint.h>
+ #include <stdio.h>
+ 
+ typedef struct _block_list *block_list;
+@@ -12,20 +13,20 @@ block block_list_insert(block_list blkli
+ block block_list_extract(block_list blklist, block blk);
+ block block_list_search(block_list blklist, char *name);
+ int block_list_count_position(block_list blklist, block blk);
+-long block_list_count_offset(block_list blklist, block blk);
++uint32_t block_list_count_offset(block_list blklist, block blk);
+ int block_list_align(block_list blklist, int size);
+-long block_list_out(block_list blklist, FILE *out);
++uint32_t block_list_out(block_list blklist, FILE *out);
+ int block_list_get_length(block_list blklist);
+ 
+ block block_create(char *name);
+ block block_destroy(block blk);
+-long block_seek(block blk, long offset);
+-long block_read(block blk, long size, char *data);
+-long block_write(block blk, long size, char *data);
++uint32_t block_seek(block blk, long offset);
++uint32_t block_read(block blk, long size, char *data);
++uint32_t block_write(block blk, long size, char *data);
+ int block_align(block blk, int size);
+ block block_get_next(block blk);
+ char *block_get_name(block blk);
+-long block_get_size(block blk);
++uint32_t block_get_size(block blk);
+ char *block_get_data(block blk);
+ int block_out(block blk, FILE *out);
+ 
+diff -Naurp objchg.org/coff.c objchg/coff.c
+--- objchg.org/coff.c	2010-12-29 21:08:46.000000000 +0900
++++ objchg/coff.c	2023-02-04 22:20:12.395726954 +0900
+@@ -7,13 +7,13 @@
+ #include "lib.h"
+ 
+ struct coff_header {
+-  short magic;
+-  short section_num;
+-  long time;
+-  long symbol_table;
+-  long symbol_num;
+-  short optional_header_size;
+-  short flags;
++  uint16_t magic;
++  uint16_t section_num;
++  uint32_t time;
++  uint32_t symbol_table;
++  uint32_t symbol_num;
++  uint16_t optional_header_size;
++  uint16_t flags;
+ #define COFF_HDR_FLAG_REL     0x0001
+ #define COFF_HDR_FLAG_EXEC    0x0002
+ #define COFF_HDR_FLAG_NOLNNUM 0x0004
+@@ -21,27 +21,27 @@ struct coff_header {
+ };
+ 
+ struct coff_optional_header {
+-  short magic;
+-  short version;
+-  long text_size; /* .textのサイズ */
+-  long data_size; /* .dataのサイズ */
+-  long bss_size;  /* .bssのサイズ */
+-  long entry_point;
+-  long text_offset; /* .textのVA */
+-  long data_offset; /* .dataのVA */
++  uint16_t magic;
++  uint16_t version;
++  uint32_t text_size; /* .textのサイズ */
++  uint32_t data_size; /* .dataのサイズ */
++  uint32_t bss_size;  /* .bssのサイズ */
++  uint32_t entry_point;
++  uint32_t text_offset; /* .textのVA */
++  uint32_t data_offset; /* .dataのVA */
+ };
+ 
+ struct coff_section_header {
+   char name[8];
+-  long physical_addr;
+-  long virtual_addr;
+-  long size;
+-  long offset;
+-  long relocation;
+-  long line_number;
+-  short relocation_num;
+-  short line_number_num;
+-  long  flags;
++  uint32_t physical_addr;
++  uint32_t virtual_addr;
++  uint32_t size;
++  uint32_t offset;
++  uint32_t relocation;
++  uint32_t line_number;
++  uint16_t relocation_num;
++  uint16_t line_number_num;
++  uint32_t  flags;
+ #define COFF_SHDR_FLAG_TEXT 0x0020
+ #define COFF_SHDR_FLAG_DATA 0x0040
+ #define COFF_SHDR_FLAG_BSS  0x0080
+@@ -58,8 +58,8 @@ section_list coff_read(char *buf)
+   struct coff_section_header *shdr;
+   char name[sizeof(shdr->name) + 1];
+   int i, num;
+-  short sflags;
+-  long lflags;
++  uint16_t sflags;
++  uint32_t lflags;
+ 
+   if (b16r(&header->magic) == 0x8301) {
+     printf("This is COFF file.\n");
+@@ -180,7 +180,7 @@ static int coff_delete_waste_section(sec
+   return count;
+ }
+ 
+-static long coff_make_coff_header(block blk, int section_num)
++static uint32_t coff_make_coff_header(block blk, int section_num)
+ {
+   struct coff_header chdr;
+ 
+@@ -193,13 +193,13 @@ static long coff_make_coff_header(block
+   return block_write(blk, sizeof(chdr), (char *)&chdr);
+ }
+ 
+-static long coff_make_optional_header(block blk,
+-				      long text_size,
+-				      long data_size,
+-				      long bss_size,
+-				      long entry_point,
+-				      long text_offset,
+-				      long data_offset)
++static uint32_t coff_make_optional_header(block blk,
++				      uint32_t text_size,
++				      uint32_t data_size,
++				      uint32_t bss_size,
++				      uint32_t entry_point,
++				      uint32_t text_offset,
++				      uint32_t data_offset)
+ {
+   struct coff_optional_header ohdr;
+ 
+@@ -214,13 +214,13 @@ static long coff_make_optional_header(bl
+   return block_write(blk, sizeof(ohdr), (char *)&ohdr);
+ }
+ 
+-static int coff_make_section_header(block blk, section_list seclist, long offset)
++static int coff_make_section_header(block blk, section_list seclist, uint32_t offset)
+ {
+   struct coff_section_header shdr;
+   section sec;
+   int count = 0;
+-  long size = 0;
+-  long lflags;
++  uint32_t size = 0;
++  uint32_t lflags;
+ 
+   for (sec = section_list_search(seclist, NULL); sec; sec = section_get_next(sec)) {
+     memset(&shdr, 0, sizeof(shdr));
+@@ -258,10 +258,10 @@ static int coff_make_section_header(bloc
+   return count;
+ }
+ 
+-static long coff_make_sections(block blk, section_list seclist)
++static uint32_t coff_make_sections(block blk, section_list seclist)
+ {
+   section sec;
+-  long size = 0;
++  uint32_t size = 0;
+ 
+   for (sec = section_list_search(seclist, NULL); sec; sec = section_get_next(sec)) {
+     size += block_write(blk, section_get_size(sec), section_get_data(sec));
+@@ -292,7 +292,7 @@ block_list coff_make(section_list seclis
+   block_list_insert(blklist, NULL, blk_section_header);
+   block_list_insert(blklist, NULL, blk_sections);
+ 
+-  section_list_align(seclist, sizeof(long));
++  section_list_align(seclist, sizeof(uint32_t));
+ 
+   text_sec = section_list_search(seclist, ".text");
+   data_sec = section_list_search(seclist, ".data");
+@@ -321,7 +321,7 @@ block_list coff_make(section_list seclis
+   /* セクションの本体を作成 */
+   coff_make_sections(blk_sections, seclist);
+ 
+-  block_list_align(blklist, sizeof(long));
++  block_list_align(blklist, sizeof(uint32_t));
+ 
+   return blklist;
+ }
+diff -Naurp objchg.org/elf.c objchg/elf.c
+--- objchg.org/elf.c	2011-01-11 22:51:37.000000000 +0900
++++ objchg/elf.c	2023-02-04 22:20:32.952198162 +0900
+@@ -28,13 +28,13 @@ struct elf_header {
+     unsigned char abi_version;
+     unsigned char reserve[7];
+   } id;
+-  short type;
++  uint16_t type;
+ #define ELF_TYPE_UNKNOWN 0
+ #define ELF_TYPE_REL     1
+ #define ELF_TYPE_EXEC    2
+ #define ELF_TYPE_DYN     3
+ #define ELF_TYPE_CORE    4
+-  short arch;
++  uint16_t arch;
+ #define ELF_ARCH_UNKNOWN  0
+ #define ELF_ARCH_I386     3
+ #define ELF_ARCH_MIPS     8
+@@ -45,22 +45,22 @@ struct elf_header {
+ #define ELF_ARCH_H8_300H 47
+ #define ELF_ARCH_H8S     48
+ #define ELF_ARCH_H8_500  49
+-  long version;
+-  long entry_point;
+-  long program_header_offset;
+-  long section_header_offset;
+-  long flags;
+-  short header_size;
+-  short program_header_size;
+-  short program_header_num;
+-  short section_header_size;
+-  short section_header_num;
+-  short section_name_index;
++  uint32_t version;
++  uint32_t entry_point;
++  uint32_t program_header_offset;
++  uint32_t section_header_offset;
++  uint32_t flags;
++  uint16_t header_size;
++  uint16_t program_header_size;
++  uint16_t program_header_num;
++  uint16_t section_header_size;
++  uint16_t section_header_num;
++  uint16_t section_name_index;
+ };
+ 
+ struct elf_section_header {
+-  long name;
+-  long type;
++  uint32_t name;
++  uint32_t type;
+ #define ELF_SECTION_TYPE_NULL     0
+ #define ELF_SECTION_TYPE_PROGBITS 1
+ #define ELF_SECTION_TYPE_SYMTAB   2
+@@ -71,39 +71,39 @@ struct elf_section_header {
+ #define ELF_SECTION_TYPE_NOTE     7
+ #define ELF_SECTION_TYPE_NOBITS   8
+ #define ELF_SECTION_TYPE_REL      9
+-  long flags;
++  uint32_t flags;
+ #define ELF_SECTION_FLAG_WRITE (1 << 0)
+ #define ELF_SECTION_FLAG_ALLOC (1 << 1)
+ #define ELF_SECTION_FLAG_EXEC  (1 << 2)
+ #define ELF_SECTION_FLAG_MERGE (1 << 4)
+ #define ELF_SECTION_FLAG_STR   (1 << 5)
+-  long address;
+-  long offset;
+-  long size;
+-  long link;
+-  long info;
+-  long align;
+-  long entsize;
++  uint32_t address;
++  uint32_t offset;
++  uint32_t size;
++  uint32_t link;
++  uint32_t info;
++  uint32_t align;
++  uint32_t entsize;
+ };
+ 
+ struct elf_program_header {
+-  long type;
++  uint32_t type;
+ #define ELF_SEGMENT_TYPE_NULL    0
+ #define ELF_SEGMENT_TYPE_LOAD    1
+ #define ELF_SEGMENT_TYPE_DYNAMIC 2
+ #define ELF_SEGMENT_TYPE_INTERP  3
+ #define ELF_SEGMENT_TYPE_NOTE    4
+ #define ELF_SEGMENT_TYPE_PHDR    6
+-  long offset;
+-  long virtual_addr;
+-  long physical_addr;
+-  long file_size;
+-  long memory_size;
+-  long flags;
++  uint32_t offset;
++  uint32_t virtual_addr;
++  uint32_t physical_addr;
++  uint32_t file_size;
++  uint32_t memory_size;
++  uint32_t flags;
+ #define ELF_SEGMENT_FLAG_EXEC  (1 << 0)
+ #define ELF_SEGMENT_FLAG_WRITE (1 << 1)
+ #define ELF_SEGMENT_FLAG_READ  (1 << 2)
+-  long align;
++  uint32_t align;
+ };
+ 
+ /* ELF形式の読み込み用関数群 */
+@@ -116,10 +116,10 @@ static int elf_check(struct elf_header *
+   return 0;
+ }
+ 
+-static long elf_get_paddr(struct elf_header *header, long virtual_addr, long size)
++static uint32_t elf_get_paddr(struct elf_header *header, long virtual_addr, long size)
+ {
+   struct elf_program_header *phdr;
+-  long physical_addr;
++  uint32_t physical_addr;
+   int i;
+ 
+   physical_addr = virtual_addr;
+@@ -148,8 +148,8 @@ section_list elf_read(char *buf)
+   struct elf_section_header *shdr, *shshdr;
+   char *name, *s;
+   int i;
+-  long flags;
+-  long paddr;
++  uint32_t flags;
++  uint32_t paddr;
+ 
+   if (elf_check(header) < 0) {
+     printf("This is not ELF file.\n");
+@@ -425,12 +425,12 @@ static int elf_program_header_number(sec
+   return count;
+ }
+ 
+-static long elf_make_program_header(block blk, section_list seclist, long offset)
++static uint32_t elf_make_program_header(block blk, section_list seclist, long offset)
+ {
+   struct elf_program_header phdr;
+   section sec;
+   int count = 0;
+-  long flags, size = 0;
++  uint32_t flags, size = 0;
+ 
+   for (sec = section_list_search(seclist, NULL); sec; sec = section_get_next(sec)) {
+     memset(&phdr, 0, sizeof(phdr));
+@@ -461,7 +461,7 @@ static long elf_make_program_header(bloc
+     b32w(&phdr.file_size, section_get_file_size(sec));
+     b32w(&phdr.memory_size, section_get_memory_size(sec));
+     b32w(&phdr.flags, flags);
+-    b32w(&phdr.align, sizeof(long));
++    b32w(&phdr.align, sizeof(uint32_t));
+     count++;
+     size += block_write(blk, sizeof(phdr), (char *)&phdr);
+   }
+@@ -469,10 +469,10 @@ static long elf_make_program_header(bloc
+   return count;
+ }
+ 
+-static long elf_make_sections(block blk, section_list seclist)
++static uint32_t elf_make_sections(block blk, section_list seclist)
+ {
+   section sec;
+-  long size = 0;
++  uint32_t size = 0;
+ 
+   for (sec = section_list_search(seclist, NULL); sec; sec = section_get_next(sec)) {
+     size += block_write(blk, section_get_size(sec), section_get_data(sec));
+@@ -481,13 +481,13 @@ static long elf_make_sections(block blk,
+   return size;
+ }
+ 
+-static int elf_make_section_header(block blk, section_list seclist, long offset)
++static int elf_make_section_header(block blk, section_list seclist, uint32_t offset)
+ {
+   struct elf_section_header shdr;
+   section sec, shstrsec;
+   int n, count = 0;
+-  long size = 0;
+-  long flags;
++  uint32_t size = 0;
++  uint32_t flags;
+ 
+   shstrsec = section_list_search(seclist, ".shstrtab");
+ 
+@@ -543,7 +543,7 @@ static int elf_make_section_header(block
+ 
+     b32w(&shdr.link, 0);
+     b32w(&shdr.info, 0);
+-    b32w(&shdr.align, sizeof(long));
++    b32w(&shdr.align, sizeof(uint32_t));
+     b32w(&shdr.entsize, 0);
+ 
+     count++;
+@@ -553,11 +553,11 @@ static int elf_make_section_header(block
+   return count;
+ }
+ 
+-static long elf_make_elf_header(block blk,
+-				long entry_point,
+-				long program_header_offset,
++static uint32_t elf_make_elf_header(block blk,
++				uint32_t entry_point,
++				uint32_t program_header_offset,
+ 				int program_header_num,
+-				long section_header_offset,
++				uint32_t section_header_offset,
+ 				int section_header_num,
+ 				int section_name_index)
+ {
+@@ -599,7 +599,7 @@ block_list elf_make(section_list seclist
+   int n;
+   int program_header_number;
+   int section_header_number;
+-  long section_offset;
++  uint32_t section_offset;
+ 
+   blklist = block_list_create();
+ 
+@@ -621,7 +621,7 @@ block_list elf_make(section_list seclist
+ 
+   /* セクション名格納用セクション(.shstrtab)の作成 */
+   elf_make_name_section(seclist);
+-  section_list_align(seclist, sizeof(long));
++  section_list_align(seclist, sizeof(uint32_t));
+ 
+   /* プログラムヘッダを作成 */
+   n = elf_program_header_number(seclist);
+@@ -638,7 +638,7 @@ block_list elf_make(section_list seclist
+   /* セクションヘッダを作成 */
+   section_header_number = elf_make_section_header(blk_section_header, seclist, section_offset);
+ 
+-  block_list_align(blklist, sizeof(long));
++  block_list_align(blklist, sizeof(uint32_t));
+ 
+   elf_make_elf_header(blk_elf_header,
+ 		      section_list_get_entry_point(seclist),
+diff -Naurp objchg.org/lib.c objchg/lib.c
+--- objchg.org/lib.c	2010-12-29 19:23:03.000000000 +0900
++++ objchg/lib.c	2023-02-04 22:22:21.046668899 +0900
+@@ -12,14 +12,14 @@ int l16r(void *buf)
+   return ((unsigned char *)buf)[1] << 8 | ((unsigned char *)buf)[0];
+ }
+ 
+-long b32r(void *buf)
++uint32_t b32r(void *buf)
+ {
+   return
+     ((unsigned char *)buf)[0] << 24 | ((unsigned char *)buf)[1] << 16 | 
+     ((unsigned char *)buf)[2] <<  8 | ((unsigned char *)buf)[3];
+ }
+ 
+-long l32r(void *buf)
++uint32_t l32r(void *buf)
+ {
+   return
+     ((unsigned char *)buf)[3] << 24 | ((unsigned char *)buf)[2] << 16 | 
+@@ -38,7 +38,7 @@ void l16w(void *buf, int val)
+   ((unsigned char *)buf)[0] = (val     ) & 0xff;
+ }
+ 
+-void b32w(void *buf, long val)
++void b32w(void *buf, uint32_t val)
+ {
+   ((unsigned char *)buf)[0] = (val >> 24) & 0xff;
+   ((unsigned char *)buf)[1] = (val >> 16) & 0xff;
+@@ -46,7 +46,7 @@ void b32w(void *buf, long val)
+   ((unsigned char *)buf)[3] = (val      ) & 0xff;
+ }
+ 
+-void l32w(void *buf, long val)
++void l32w(void *buf, uint32_t val)
+ {
+   ((unsigned char *)buf)[3] = (val >> 24) & 0xff;
+   ((unsigned char *)buf)[2] = (val >> 16) & 0xff;
+diff -Naurp objchg.org/lib.h objchg/lib.h
+--- objchg.org/lib.h	2010-12-29 19:23:03.000000000 +0900
++++ objchg/lib.h	2023-02-04 22:23:49.500683018 +0900
+@@ -1,14 +1,16 @@
+ #ifndef _LIB_H_INCLUDED_
+ #define _LIB_H_INCLUDED_
+ 
++#include <stdint.h>
++
+ int b16r(void *buf);
+ int l16r(void *buf);
+-long b32r(void *buf);
+-long l32r(void *buf);
++uint32_t b32r(void *buf);
++uint32_t l32r(void *buf);
+ void b16w(void *buf, int val);
+ void l16w(void *buf, int val);
+-void b32w(void *buf, long val);
+-void l32w(void *buf, long val);
++void b32w(void *buf, uint32_t val);
++void l32w(void *buf, uint32_t val);
+ 
+ char *v2sl(int val);
+ char *v2ss(int val);
+diff -Naurp objchg.org/section.c objchg/section.c
+--- objchg.org/section.c	2010-12-29 19:23:03.000000000 +0900
++++ objchg/section.c	2023-02-04 22:21:05.572944990 +0900
+@@ -11,24 +11,24 @@ struct _section_list {
+ 
+   struct {
+     section_list_type_t type;
+-    long entry_point;
++    uint32_t entry_point;
+   } param;
+ };
+ 
+ struct _section {
+   struct _section *next;
+   char *name;
+-  long size;
+-  long offset;
+-  long datasize;
++  uint32_t size;
++  uint32_t offset;
++  uint32_t datasize;
+   char *data;
+ 
+   struct {
+     section_type_t type;
+-    long physical_addr;
+-    long virtual_addr;
+-    long file_size;
+-    long memory_size;
++    uint32_t physical_addr;
++    uint32_t virtual_addr;
++    uint32_t file_size;
++    uint32_t memory_size;
+   } param;
+ };
+ 
+@@ -133,10 +133,10 @@ int section_list_count_position(section_
+   return -1;
+ }
+ 
+-long section_list_count_offset(section_list seclist, section sec)
++uint32_t section_list_count_offset(section_list seclist, section sec)
+ {
+   section sec2;
+-  long offset = 0;
++  uint32_t offset = 0;
+   for (sec2 = seclist->head; sec2; sec2 = sec2->next) {
+     if (sec2 == sec)
+       return offset;
+@@ -170,12 +170,12 @@ section_list_type_t section_list_set_typ
+   return seclist->param.type = type;
+ }
+ 
+-long section_list_get_entry_point(section_list seclist)
++uint32_t section_list_get_entry_point(section_list seclist)
+ {
+   return seclist->param.entry_point;
+ }
+ 
+-long section_list_set_entry_point(section_list seclist, long entry_point)
++uint32_t section_list_set_entry_point(section_list seclist, long entry_point)
+ {
+   return seclist->param.entry_point = entry_point;
+ }
+@@ -255,7 +255,7 @@ section section_destroy(section sec)
+   return NULL;
+ }
+ 
+-static long section_extend(section sec, long size)
++static uint32_t section_extend(section sec, long size)
+ {
+   char *newbuf;
+   if (size > sec->datasize) {
+@@ -271,14 +271,14 @@ static long section_extend(section sec,
+   return size;
+ }
+ 
+-long section_seek(section sec, long offset)
++uint32_t section_seek(section sec, long offset)
+ {
+   section_extend(sec, offset);
+   sec->offset = offset;
+   return offset;
+ }
+ 
+-long section_read(section sec, long size, char *data)
++uint32_t section_read(section sec, long size, char *data)
+ {
+   if (sec->offset > sec->size)
+     return 0;
+@@ -289,7 +289,7 @@ long section_read(section sec, long size
+   return size;
+ }
+ 
+-long section_write(section sec, long size, char *data)
++uint32_t section_write(section sec, long size, char *data)
+ {
+   section_extend(sec, sec->offset + size);
+   if (data)
+@@ -320,7 +320,7 @@ char *section_get_name(section sec)
+   return sec->name;
+ }
+ 
+-long section_get_size(section sec)
++uint32_t section_get_size(section sec)
+ {
+   return sec->size;
+ }
+@@ -340,42 +340,42 @@ section_type_t section_set_type(section
+   return sec->param.type = type;
+ }
+ 
+-long section_get_physical_addr(section sec)
++uint32_t section_get_physical_addr(section sec)
+ {
+   return sec->param.physical_addr;
+ }
+ 
+-long section_set_physical_addr(section sec, long physical_addr)
++uint32_t section_set_physical_addr(section sec, long physical_addr)
+ {
+   return sec->param.physical_addr = physical_addr;
+ }
+ 
+-long section_get_virtual_addr(section sec)
++uint32_t section_get_virtual_addr(section sec)
+ {
+   return sec->param.virtual_addr;
+ }
+ 
+-long section_set_virtual_addr(section sec, long virtual_addr)
++uint32_t section_set_virtual_addr(section sec, long virtual_addr)
+ {
+   return sec->param.virtual_addr = virtual_addr;
+ }
+ 
+-long section_get_file_size(section sec)
++uint32_t section_get_file_size(section sec)
+ {
+   return sec->param.file_size;
+ }
+ 
+-long section_set_file_size(section sec, long file_size)
++uint32_t section_set_file_size(section sec, long file_size)
+ {
+   return sec->param.file_size = file_size;
+ }
+ 
+-long section_get_memory_size(section sec)
++uint32_t section_get_memory_size(section sec)
+ {
+   return sec->param.memory_size;
+ }
+ 
+-long section_set_memory_size(section sec, long memory_size)
++uint32_t section_set_memory_size(section sec, long memory_size)
+ {
+   return sec->param.memory_size = memory_size;
+ }
+diff -Naurp objchg.org/section.h objchg/section.h
+--- objchg.org/section.h	2010-12-29 19:23:03.000000000 +0900
++++ objchg/section.h	2023-02-04 22:23:32.052286201 +0900
+@@ -1,6 +1,7 @@
+ #ifndef _SECTION_H_INCLUDED_
+ #define _SECTION_H_INCLUDED_
+ 
++#include <stdint.h>
+ #include <stdio.h>
+ 
+ typedef struct _section_list *section_list;
+@@ -28,37 +29,37 @@ section section_list_insert(section_list
+ section section_list_extract(section_list seclist, section sec);
+ section section_list_search(section_list seclist, char *name);
+ int section_list_count_position(section_list seclist, section sec);
+-long section_list_count_offset(section_list seclist, section sec);
++uint32_t section_list_count_offset(section_list seclist, section sec);
+ int section_list_align(section_list seclist, int size);
+ int section_list_get_length(section_list seclist);
+ section_list_type_t section_list_get_type(section_list seclist);
+ section_list_type_t section_list_set_type(section_list seclist,
+ 					  section_list_type_t type);
+-long section_list_get_entry_point(section_list seclist);
+-long section_list_set_entry_point(section_list seclist, long entry_point);
++uint32_t section_list_get_entry_point(section_list seclist);
++uint32_t section_list_set_entry_point(section_list seclist, long entry_point);
+ int section_list_print(section_list seclist, FILE *out);
+ 
+ section section_create(char *name);
+ section section_create_by_copy(section sec);
+ section section_destroy(section sec);
+-long section_seek(section sec, long offset);
+-long section_read(section sec, long size, char *data);
+-long section_write(section sec, long size, char *data);
++uint32_t section_seek(section sec, long offset);
++uint32_t section_read(section sec, long size, char *data);
++uint32_t section_write(section sec, long size, char *data);
+ int section_align(section sec, int size);
+ section section_get_next(section sec);
+ char *section_get_name(section sec);
+-long section_get_size(section sec);
++uint32_t section_get_size(section sec);
+ char *section_get_data(section sec);
+ section_type_t section_get_type(section sec);
+ section_type_t section_set_type(section sec, section_type_t type);
+-long section_get_physical_addr(section sec);
+-long section_set_physical_addr(section sec, long physical_addr);
+-long section_get_virtual_addr(section sec);
+-long section_set_virtual_addr(section sec, long virtual_addr);
+-long section_get_file_size(section sec);
+-long section_set_file_size(section sec, long file_size);
+-long section_get_memory_size(section sec);
+-long section_set_memory_size(section sec, long memory_size);
++uint32_t section_get_physical_addr(section sec);
++uint32_t section_set_physical_addr(section sec, long physical_addr);
++uint32_t section_get_virtual_addr(section sec);
++uint32_t section_set_virtual_addr(section sec, long virtual_addr);
++uint32_t section_get_file_size(section sec);
++uint32_t section_set_file_size(section sec, long file_size);
++uint32_t section_get_memory_size(section sec);
++uint32_t section_set_memory_size(section sec, long memory_size);
+ int section_print(section sec, FILE *out);
+ 
+ #endif

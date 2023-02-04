@@ -1,0 +1,55 @@
+OUTPUT_FORMAT("coff-h8300")
+OUTPUT_ARCH(h8300h)
+ENTRY("_start")
+
+MEMORY
+{
+	romall(rx)	: o = 0x000000, l = 0x080000	/* 512kB */
+	vectors(r)	: o = 0x000000, l = 0x000100	/* top of ROM */
+	rom(rx)		: o = 0x000100, l = 0x07FF00
+
+	ramall(rwx)	: o = 0xFFBF20, l = 0x004000	/* 16kB */
+	data(rwx)	: o = 0xFFFC20, l = 0x000300
+	stack(rw)	: o = 0xFFFF00, l = 0x000000	/* end of RAM */
+}
+
+SECTIONS
+{
+	.vectors : {
+		vector.o(.data)
+	} > vectors
+
+	.text : {
+		_text_start = . ;
+		*(.text)
+		_etext = . ;
+	} > rom
+
+	.rodata : {
+		_rodata_start = . ;
+		*(.strings)
+		*(.rodata)
+		*(.rodata.*)
+		_erodata = . ;
+	} > rom
+
+	.data : {
+		_data_start = . ;
+		*(.data)
+		_edata = . ;
+	} > data AT> rom
+
+	.bss : {
+		_bss_start = . ;
+		*(.bss)
+		*(COMMON)
+		_ebss = . ;
+	} > data AT> rom
+
+	. = ALIGN(4);
+	_end = . ;
+
+	.stack : {
+		_stack = . ;
+	} > stack
+}

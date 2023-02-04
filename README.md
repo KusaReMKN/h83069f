@@ -38,7 +38,9 @@ H8/3069F の代わりに H8/3068F が載っているボードも拾ったけれ�
 
 - [H8/3069F ネット対応マイコン LAN ボード (完成品)][K-01271]
 - [H8/3069F ネット対応マイコン LAN ボード (ボードキット)][K-00209]
+- [AKI-H8/3068F フラッシュマイコン LAN ボード][K-11207]
 
 [makeos]:  https://kozos.jp/books/makeos/
 [K-01271]: https://akizukidenshi.com/catalog/g/gK-01271/
 [K-00209]: https://akizukidenshi.com/catalog/g/gK-00209/
+[K-11207]: https://akizukidenshi.com/catalog/g/gK-11207/

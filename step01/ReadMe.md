@@ -77,7 +77,8 @@ $ sudo apt install screen
 
 screen を起動してシリアルデバイスを監視しておき、マイコンボードの電源を入れる。
 その際、DIP スイッチの状態を ON/OFF/ON/OFF にしておく。
-screen を終了するには [Ctrl]+[A] を押下し、[K] を押下し、[Y] を押下する。
+screen を終了するには <kbd><kbd>Ctrl</kbd>+<kbd>A</kbd></kbd> を押下し、
+<kbd><kbd>K</kbd></kbd> を押下し、<kbd><kbd>Y</kbd></kbd> を押下する。
 
 ```console
 $ screen /dev/ttyUSB0 9600
